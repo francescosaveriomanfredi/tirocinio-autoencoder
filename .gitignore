@@ -127,4 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# File object
 *.h5ad*
+
+# drive filesistem utils
+*.ini
