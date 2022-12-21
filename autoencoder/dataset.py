@@ -1,44 +1,61 @@
 import anndata as an
-from typing import Optional
+import numpy as np
+from typing import Optional, Callable, Union
 from torch.utils import data
 from scipy.sparse import issparse
+from scipy.stats import binom
+from sklearn.preprocessing import StandardScaler, MaxAbsScaler
 
-class MyAnDataset(data.Dataset):
+class Scaler:
+    def __init__(self, n, scaler):
+        self.scaler = scaler.fit(n)
+    def __call__(self, n):
+        return self.scaler.transform(n)
+
+class BinomDropout:
+    def __init__(self, p):
+        self.p = p
+    def __call__(self, n):
+        n
+        return n - binom.rvs(n, self.p)
+
+class MyDataset(data.Dataset):
     """
-    A Dataset built from a layer of an anndata.
-    The y is the raw counts and x is the same counts 
-    scaled or not depending on ``layer_scale``
+    A Dataset of genes count
     
     Parameters
     ----------
-    adata
-        AnnData object
-    layer_count
-        If provided, which element of layers are raw counts
-    layer_scale
-        If provided, which element of layers are scaled counts
-        (if not provided it use the same data of layer_count)
-    
+    data
+        raw counts in a sparse or not sparse format
+    scale
+        A callable used to scale data 
+    p_gene_dropout
+        probability to drop one gene espression for each gene expression
     """
     def __init__(
         self,
-        adata: an.AnnData,
-        layer_count: Optional[str] = None,
-        layer_scale: Optional[str] = None,
-        # label: Optional[str]=None
+        data: any,
+        scale_type: Union[str, Callable] = "StandardScaler",
+        p_gene_dropout: float = 0.
     ):
         super().__init__()
-        self.dim = adata.n_obs
-        # self.label = adata.obs_names if label is None else adata.obs[label]
-        self.x = adata.X if layer_scale is None else adata.layers[layer_scale]
-        self.y = self.x if layer_count is None else adata.layers[layer_count]
+        self.data = data
+        self.dim = data.shape[0]
+        if scale_type is None:
+            self.scaler = lambda x:x
+        elif scale_type == "StandardScaler":
+            self.scaler = Scaler(data, StandardScaler(with_mean=False))
+        elif scale_type == "MaxAbsScaler":
+            self.scaler = Scaler(data, MaxAbsScaler())
+        else:
+             self.scaler = scale_type
+        self.gene_dropout = BinomDropout(p_gene_dropout)
         
     def __len__(self):
         return self.dim
     
     def __getitem__(self, idx):
-        y = self.y[idx].toarray().squeeze(0) if issparse(self.y) else self.y[idx]
-        # l = self.label[idx]
-        # if it is not scale just return the same data
-        x = y if self.x is self.y else self.x[idx] 
-        return x, y
+        out_data = self.data[idx].toarray() if issparse(self.data) else self.data[idx]
+        out_data = self.gene_dropout(out_data.astype(np.int32)).astype(np.float32)
+        in_data = self.scaler(out_data).astype(np.float32)
+        return in_data.squeeze(0), out_data.squeeze(0)
