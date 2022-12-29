@@ -102,7 +102,7 @@ class CountDataModule(pl.LightningDataModule):
         gene_filter:Optional[str]="highly_variable",
         scale_type:Union[Callable, str, None]="StandardScaler",
         p_gene_dropout:float=0.,
-        split_lengths:Sequence[int|float]=[0.7, 0.2, 0.1],
+        train_val_test_lengths:Sequence[int|float]=[0.7, 0.2, 0.1],
         num_workers:int=0,
     ):
         super().__init__()
@@ -112,7 +112,7 @@ class CountDataModule(pl.LightningDataModule):
         self.gene_filter = gene_filter
         self.scale_type = scale_type
         self.p_gene_dropout = p_gene_dropout
-        self.split_lenghts = split_lengths
+        self.train_val_test_lengths = train_val_test_lengths
         self.num_workers = num_workers
     
     def setup(self, stage=None):
@@ -130,7 +130,7 @@ class CountDataModule(pl.LightningDataModule):
 
         self.count_train, self.count_val, self.count_test = random_split(
             self.count_predict, 
-            self.split_lenghts
+            self.train_val_test_lenghts
         )
         
     def train_dataloader(self):
