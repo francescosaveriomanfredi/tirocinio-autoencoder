@@ -100,7 +100,7 @@ class CountDataModule(pl.LightningDataModule):
         batch_size:int=128,
         n_gene:Optional[int]=None,
         gene_filter:Optional[str]="highly_variable",
-        scale_type:Union[Callable, str, None]="StandardScaler",
+        scale_type:Union[Callable,str,None]="StandardScaler",
         p_gene_dropout:float=0.,
         train_val_test_lengths:Sequence[int|float]=[0.7, 0.2, 0.1],
         num_workers:int=0,
@@ -118,7 +118,7 @@ class CountDataModule(pl.LightningDataModule):
     def setup(self, stage=None):
         # If we give a path and not an AnnData
         if isinstance(self.adata, str):
-            self.adata = an.read_h5ad("../counts.h5ad.gzip")
+            self.adata = an.read_h5ad(f"{self.adata}")
         
         self.count_predict = CountDataset(
             adata=self.adata,
@@ -130,7 +130,7 @@ class CountDataModule(pl.LightningDataModule):
 
         self.count_train, self.count_val, self.count_test = random_split(
             self.count_predict, 
-            self.train_val_test_lenghts
+            self.train_val_test_lengths
         )
         
     def train_dataloader(self):
