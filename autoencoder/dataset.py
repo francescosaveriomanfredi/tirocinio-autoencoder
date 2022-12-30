@@ -30,7 +30,7 @@ def filter_gene(
     if gene_filter is None:
         gene_index = adata.var_names
     elif n_gene is None:
-        gene_index = adata.var[gene_filter].index
+        gene_index = adata.var_names[adata.var[gene_filter]]
     else:
         gene_index = adata.var[gene_filter].nlargest(n_gene).index
     
