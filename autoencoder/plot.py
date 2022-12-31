@@ -10,5 +10,5 @@ def joinplot_pca(df:pd.DataFrame, cluster=None, palette=None, size=10, alpha=0.3
 
 def print_CSVlogger(trainer, metric):
     history = pd.read_csv(f"{trainer.logger.log_dir}/metrics.csv", index_col="epoch")
-    axe=history["metric"].plot.line()
+    axe=history[metric].plot.line()
     return axe

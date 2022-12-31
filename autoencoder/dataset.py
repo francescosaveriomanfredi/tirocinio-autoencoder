@@ -64,13 +64,10 @@ class CountDataset(data.Dataset):
     def __init__(
         self,
         adata: an.AnnData,
-        gene_filter: Optional[str]="highly_variable",
-        n_gene: Optional[int]=None,
         scale_type: Union[str, Callable, None]=None,
         p_gene_dropout: float=0.
     ):
         super().__init__()
-        adata = filter_gene(adata, gene_filter, n_gene)
         self.data = adata.X
         self.dim = self.data.shape[0]
         if scale_type is None:
@@ -120,10 +117,13 @@ class CountDataModule(pl.LightningDataModule):
         if isinstance(self.adata, str):
             self.adata = an.read_h5ad(f"{self.adata}")
         
+        self.adata = filter_gene(
+            self.adata, 
+            self.gene_filter, 
+            self.n_gene
+        )
         self.count_predict = CountDataset(
             adata=self.adata,
-            gene_filter=self.gene_filter,
-            n_gene=self.n_gene,
             scale_type=self.scale_type,
             p_gene_dropout=self.p_gene_dropout
         )
@@ -164,3 +164,16 @@ class CountDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             pin_memory=True
         )
+
+def highly_variable_genes(adata, n_top_genes):
+    adata_ = adata.copy()
+    sc.pp.log1p(adata_) # log(expression + 1)
+    sc.pp.highly_variable_genes(
+        adata_,
+        n_top_genes=n_top_genes,
+        flavor="seurat"
+    )
+    adata_.X = adata.X
+    return adata_
+
+
