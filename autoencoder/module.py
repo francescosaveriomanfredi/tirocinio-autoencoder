@@ -26,6 +26,7 @@ class AutoencoderNB(pl.LightningModule):
     """
     def __init__(self, n_input, n_latent: int, layers_dim:List[int], library_layers_dim=List[int]):
         super().__init__()
+        self.save_hyperparameters()
         self.encoder = MyEncoder(n_input, n_latent, layers_dim)
         layers_dim.reverse()
         self.decoder = MyDecoder(n_latent,n_input, layers_dim)
@@ -82,7 +83,8 @@ class AutoencoderNB(pl.LightningModule):
         return true_proba
     
     def training_step(self, train_batch, batch_idx):
-        x_scaled, x = train_batch
+        x_scaled = train_batch["X"]
+        x = train_batch["Y"]
         qz_m, qz_v, z, px_m, px_r, l = self.forward(x_scaled, True)
         nb_loss = self.nb_loss(x, px_m, px_r, log="train")
         kl_loss = self.kl_loss(qz_m, qz_v, log="train")
@@ -93,13 +95,25 @@ class AutoencoderNB(pl.LightningModule):
         return loss
 
     def validation_step(self, val_batch, batch_idx):
-        x_scaled, x = val_batch
+        x_scaled = val_batch["X"]
+        x = val_batch["Y"]
         qz_m, qz_v, z, px_m, px_r, l = self.forward(x_scaled, False)
-        nb_loss = self.nb_loss(x, px_m, px_r, log="val")
-        kl_loss = self.kl_loss(qz_m, qz_v, log="val")
+        _ = self.nb_loss(x, px_m, px_r, log="val")
+        _ = self.kl_loss(qz_m, qz_v, log="val")
         _ = self.recall_metric(x, px_m, px_r, log="val")
         _ = self.crossentropy_metric(x, px_m, px_r, log="val")
     
-    def predict_step(self, batch, batch_idx):
-        x_scaled, x = batch
-        return self.forward(x_scaled) 
+    def predict_step(self, pred_batch, batch_idx):
+        x_scaled = pred_batch["X"]
+        x = pred_batch["Y"]
+        qz_m, qz_v, z, px_m, px_r, l = self.forward(x_scaled)
+        # TO DO normalize the l to have mean 1
+        return qz_m, qz_v, z, px_m, px_r, l 
+        #dict(
+        #    latent_mean=qz_m, 
+        #    latent_var=qz_v, 
+        #    latent_sample=z, 
+        #    negbin_mean=px_m, 
+        #    negbin_r=px_r,
+        #    negbin_lib=l
+        #)

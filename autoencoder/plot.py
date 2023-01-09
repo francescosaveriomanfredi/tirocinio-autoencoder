@@ -1,6 +1,7 @@
 import seaborn as sns
 from sklearn.decomposition import PCA
 import pandas as pd
+import plotly.express as px
 
 def joinplot_pca(df:pd.DataFrame, cluster=None, palette=None, size=10, alpha=0.3):
     pca = PCA(n_components=2)
@@ -8,7 +9,35 @@ def joinplot_pca(df:pd.DataFrame, cluster=None, palette=None, size=10, alpha=0.3
     sns.jointplot(data=pca_df, x="pca_1", y="pca_2", hue=cluster, alpha=alpha, palette=palette, height=size)
     return pca_df
 
-def print_CSVlogger(trainer, metric):
-    history = pd.read_csv(f"{trainer.logger.log_dir}/metrics.csv", index_col="epoch")
-    axe=history[metric].plot.line()
-    return axe
+def plot_CSVLogger(data, metrics,):
+    try:
+        history = pd.read_csv(data, index_col="epoch")
+    except:
+        history = data
+    history = history.groupby(level=0).mean()
+    fig = px.line(history)
+    fig = fig.update_layout(
+        updatemenus=[
+            dict(
+                type="buttons",
+                direction="right",
+                x=0.7,
+                y=1.2,
+                showactive=True,
+                buttons=list(
+                    [
+                    
+                        dict(
+                            label=metric,
+                            method="update",
+                            args=[
+                                {"visible": list(history.columns.str.endswith(metric))},
+                                {"yaxis.title.text": metric},
+                            ],
+                        )for metric in metrics
+                    ]
+                ),
+            )
+        ]
+    )
+    return fig

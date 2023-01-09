@@ -87,7 +87,10 @@ class CountDataset(data.Dataset):
         out_data = self.data[idx].toarray() if issparse(self.data) else self.data[idx]
         out_data = self.gene_dropout(out_data.astype(np.int32)).astype(np.float32)
         in_data = self.scaler(out_data).astype(np.float32)
-        return in_data.squeeze(0), out_data.squeeze(0)
+        return {
+            "X":in_data.squeeze(0), 
+            "Y":out_data.squeeze(0)
+        }
 
 
 class CountDataModule(pl.LightningDataModule):
@@ -96,10 +99,10 @@ class CountDataModule(pl.LightningDataModule):
         adata:Union[an.AnnData, str],
         batch_size:int=128,
         n_gene:Optional[int]=None,
-        gene_filter:Optional[str]="highly_variable",
+        gene_filter:Optional[str]=None,
         scale_type:Union[Callable,str,None]="StandardScaler",
         p_gene_dropout:float=0.,
-        train_val_test_lengths:Sequence[int|float]=[0.7, 0.2, 0.1],
+        train_val_test_lengths:Sequence[float]=[0.7, 0.2, 0.1],
         num_workers:int=0,
     ):
         super().__init__()
@@ -138,6 +141,7 @@ class CountDataModule(pl.LightningDataModule):
             self.count_train, 
             batch_size=self.batch_size,
             num_workers=self.num_workers,
+            shuffle=True,
             pin_memory=True
         )
 
