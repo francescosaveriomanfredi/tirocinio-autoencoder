@@ -186,4 +186,20 @@ def highly_variable_genes(adata, n_top_genes):
     adata_.X = adata.X
     return adata_
 
+def unbatch(batched_param):
+    n_param = len(batched_param[0])
+    unbatched_param = []
+    for param in range(n_param):
+        unbatched_param.append(
+            np.vstack([batch[param] for batch in batched_param])
+        )
+    return unbatched_param
+
+def annotate_predictions(adata, layers, obsm, obs,):
+    for layers_label in layers:
+        adata.layers[layers_label] = layers[layers_label]
+    for obsm_label in obsm:
+        adata.obsm[obsm_label] = obsm[obsm_label]
+    for obs_label in obs:
+        adata.obs[obs_label] = obs[obs_label]
 

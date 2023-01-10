@@ -108,7 +108,8 @@ class AutoencoderNB(pl.LightningModule):
         x = pred_batch["Y"]
         qz_m, qz_v, z, px_m, px_r, l = self.forward(x_scaled)
         # TO DO normalize the l to have mean 1
-        return qz_m, qz_v, z, px_m, px_r, l 
+        return qz_m, qz_v, z, px_m, px_r, l
+
         #dict(
         #    latent_mean=qz_m, 
         #    latent_var=qz_v, 

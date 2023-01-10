@@ -41,3 +41,43 @@ def plot_CSVLogger(data, metrics,):
         ]
     )
     return fig
+
+def plot_scatter(
+    X_pca, 
+    variance_ratio=None, 
+    color=None, 
+    color_discrete_sequence=None,
+):
+    if variance_ratio is None:
+        variance_ratio = ["",""]
+    else:
+        variance_ratio = [f"({variance_ratio[0]:.2})", f"({variance_ratio[1]:.2})"]
+    
+    color_discrete_map = None
+    if color_discrete_sequence is not None:
+        color_discrete_map = dict(zip(
+            color.cat.categories,
+            color_discrete_sequence
+        ))
+    
+    fig = px.scatter(
+        x=X_pca[:,0],
+        y=X_pca[:,1],
+        color=color,
+        color_discrete_map=color_discrete_map,
+        opacity=0.3,
+        marginal_x="histogram",
+        marginal_y="histogram",
+        #range_color=[0,1]
+    )
+
+    fig.update_layout(title = "PCA",
+                      xaxis_title = f"PCA1"+variance_ratio[0],
+                      yaxis_title = f"PCA2"+variance_ratio[1],
+                      width = 2000,
+                      height = 700,
+                      )
+
+    config = dict({'scrollZoom': True})
+    # add dropdown menus to the figure
+    return fig.show(config=config)
