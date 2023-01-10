@@ -48,6 +48,12 @@ class BinomDropout:
     def __call__(self, n):
         return n - binom.rvs(n, self.p)
 
+class Binarize:
+    def __init__(self):
+        pass
+    def __call__(self, n):
+        return np.where(n > 0, 1, 0)
+
 class CountDataset(data.Dataset):
     """
     A Dataset of genes count
@@ -74,8 +80,8 @@ class CountDataset(data.Dataset):
             self.scaler = lambda x:x
         elif scale_type == "StandardScaler":
             self.scaler = Scaler(self.data, StandardScaler(with_mean=False))
-        elif scale_type == "MaxAbsScaler":
-            self.scaler = Scaler(self.data, MaxAbsScaler())
+        elif scale_type == "BinarizeScaler":
+            self.scaler = Binarize()
         else:
              self.scaler = scale_type
         self.gene_dropout = BinomDropout(p_gene_dropout)
