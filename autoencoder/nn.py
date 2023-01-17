@@ -5,6 +5,56 @@ from distributions import gaussian_sample
 from torch import nn
 import collections 
 
+class ResNetBlock(nn.Module):
+    """
+    A Helper class to build one recurrent block
+    """
+    def __init__(
+        self,
+        n_in:int,
+        block_dim:List[int]=[64, 64]
+    ):
+        super().__init__()
+        block_dim = block_dim
+        self.fc_layers = collections.OrderedDict()
+        # This is do in order to avoid the final relu in the last cicle
+        # of the next loop
+        self.fc_layers["Layer 0"] = nn.Sequential(
+            nn.Linear(n_in, block_dim[0],),
+            nn.BatchNorm1d(block_dim[0], momentum=0.01, eps=0.001),
+        )
+        for i in range(len(block_dim)-1):
+            self.fc_layers[f"Layer {i+1}"] = nn.Sequential(
+                nn.ReLU(),
+                nn.Linear(block_dim[i], block_dim[i+1],),
+                nn.BatchNorm1d(block_dim[i+1], momentum=0.01, eps=0.001)
+            )
+        self.fc_layers = nn.Sequential(self.fc_layers)
+        # layer adapt the input to match the output dimension 
+        # if the input dimension is different from the output
+        self.adapt_dimension = nn.Linear(
+            block_dim[0], 
+            block_dim[-1]
+        ) if block_dim[0] != block_dim[-1] else None
+
+    def forward(self, x:torch.Tensor):
+        """
+        Forward computation on ``x``
+
+        Parameters
+        ----------
+        x
+            tensor of value with shape ``(n_in,)``
+        Returns
+        -------
+        :class:`torch.Tensor`
+            tensor of shape ``(n_out,)``
+        """
+        y = self.fc_layers.forward(x)
+        if self.adapt_dimension:
+            x = self.adapt_dimension(x)
+        return nn.ReLU(x+y)
+
 class MyFCLayers(torch.nn.Module):
     """
     A helper classto build fully-connected layers for a neural network.
@@ -13,41 +63,42 @@ class MyFCLayers(torch.nn.Module):
     ----------
     n_in
         The dimensionality of the input
-    n_out
-        The dimensionality of the output
     layers_dim
         The sequence of layers dimension
     
     """
-    
     def __init__(
         self,
         n_in: int,
-        n_out: int,
-        layers_dim: List[int] = [128]
+        layers_dim: List[int] = [128],
+        use_batch_norm=True
     ):
         super().__init__()
-        layers_dim = [n_in] + layers_dim + [n_out]
         
-        self.fc_layers = nn.Sequential(
-            collections.OrderedDict(
-                [
-                    (
-                        f"Layer {i}",
-                        nn.Sequential(
-                            # nn.Linear = layers.Dense
-                            nn.Linear(
-                                n_in,
-                                n_out,
-                            ),
-                            nn.ReLU()
-                        )
-                    )
-                    for i, (n_in, n_out) in enumerate(
-                        zip(layers_dim[:-1], layers_dim[1:]))
-                ]
-            )
-        )
+        layers_dim = [n_in] + layers_dim
+        self.fc_layers = collections.OrderedDict()
+        for i in range(len(layers_dim)-1):
+            # check if there is a nested ResNetBlock
+            if isinstance(layers_dim[i+1], int):
+                self.fc_layers[f"Layer {i}"] = nn.Sequential(
+                    nn.Linear(layers_dim[i], layers_dim[i+1]),
+                    nn.BatchNorm1d(
+                        layers_dim[i+1], momentum=0.01, eps=0.001
+                    ) if use_batch_norm else None,
+                    nn.ReLU()
+                )
+            else: 
+                self.fc_layers[f"Layer {i}"] = ResNetBlock(
+                    layers_dim[i], 
+                    layers_dim[i+1]
+                )
+                # the input dimension of the next cicle will be 
+                # the output dimension of the last ResNetBlock's layer 
+                layers_dim[i+1] = layers_dim[i+1][-1]
+
+        self.n_in = layers_dim[0]
+        self.n_out = layers_dim[-1]
+        self.fc_layers = nn.Sequential(self.fc_layers)
     
     def forward(self, x:torch.Tensor):
         """
@@ -61,7 +112,7 @@ class MyFCLayers(torch.nn.Module):
         Returns
         -------
         :class:`torch.Tensor`
-            tensor of shape ``(n_out,)``
+            tensor of shape ``(layers_dim[-1],)``
         """
         return self.fc_layers.forward(x)
 
@@ -97,15 +148,14 @@ class MyEncoder(nn.Module):
         var_activation: Optional[Callable] = None,
         ):
             super().__init__()
-
+            
             self.var_eps = var_eps
             self.encoder = MyFCLayers(
                 n_in=n_input,
-                n_out=layers_dim[-1],
-                layers_dim=layers_dim[:-1],
+                layers_dim=layers_dim,
             )
-            self.mean_encoder = nn.Linear(layers_dim[-1], n_output)
-            self.var_encoder = nn.Linear(layers_dim[-1], n_output)
+            self.mean_encoder = nn.Linear(self.encoder.n_out, n_output)
+            self.var_encoder = nn.Linear(self.encoder.n_out, n_output)
             self.var_activation = torch.exp if var_activation is None else var_activation
         
     def forward(self, x:torch.Tensor):
@@ -169,13 +219,12 @@ class MyDecoder(nn.Module):
             self.eps=eps
             self.decoder = MyFCLayers(
                 n_in=n_input,
-                n_out=layers_dim[-1],
-                layers_dim=layers_dim[:-1],
+                layers_dim=layers_dim,
             )
-            self.mean_decoder = nn.Linear(layers_dim[-1], n_output)
-            self.shape_decoder = nn.Linear(layers_dim[-1], n_output)
+            self.mean_decoder = nn.Linear(self.decoder.n_out, n_output)
+            self.shape_decoder = nn.Linear(self.decoder.n_out, n_output)
             self.mean_activation = torch.exp if mean_activation is None else mean_activation
-            self.shape_activation = torch.exp if mean_activation is None else shape_activation
+            self.shape_activation = torch.exp if shape_activation is None else shape_activation
         
     def forward(self, x:torch.Tensor, library:torch.Tensor):
         r"""
