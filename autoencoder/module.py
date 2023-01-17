@@ -51,15 +51,6 @@ class AutoencoderNB(pl.LightningModule):
         """
         super().__init__()
         
-        self.save_hyperparameters()
-        self.n_input = n_input
-        self.n_latent = n_latent
-        self.layers_dim = layers_dim
-        self.library_layers_dim = library_layers_dim
-        self.learning_rate = learning_rate
-        self.scheduler_milestones = scheduler_milestones
-        self.scheduler_alpha = scheduler_alpha
-
         self.encoder = MyEncoder(n_input, n_latent, layers_dim)
         layers_dim = reverse_and_flat(layers_dim)
         self.decoder = MyDecoder(n_latent,n_input, layers_dim)
@@ -81,11 +72,11 @@ class AutoencoderNB(pl.LightningModule):
             https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
             https://pytorch-lightning.readthedocs.io/en/stable/common/lightning_module.html?highlight=configure_optimizers()
         """
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        optimizer = torch.optim.Adam(self.parameters())
         scheduler= lr_scheduler.MultiStepLR(
             optimizer, 
-            milestones=self.scheduler_milestones, 
-            gamma=self.scheduler_alpha,
+            milestones=self.hparams.scheduler_milestones, 
+            gamma=self.hparams.scheduler_alpha,
             verbose=True
         )
         return {"optimizer":optimizer, "lr_scheduler":scheduler}
