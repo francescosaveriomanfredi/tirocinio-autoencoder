@@ -51,6 +51,8 @@ class AutoencoderNB(pl.LightningModule):
         """
         super().__init__()
         
+        self.save_hyperparameters()
+
         self.encoder = MyEncoder(n_input, n_latent, layers_dim)
         layers_dim = reverse_and_flat(layers_dim)
         self.decoder = MyDecoder(n_latent,n_input, layers_dim)
