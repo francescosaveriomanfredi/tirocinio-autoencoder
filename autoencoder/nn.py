@@ -80,13 +80,17 @@ class MyFCLayers(torch.nn.Module):
         for i in range(len(layers_dim)-1):
             # check if there is a nested ResNetBlock
             if isinstance(layers_dim[i+1], int):
-                self.fc_layers[f"Layer {i}"] = nn.Sequential(
-                    nn.Linear(layers_dim[i], layers_dim[i+1]),
-                    nn.BatchNorm1d(
-                        layers_dim[i+1], momentum=0.01, eps=0.001
-                    ) if use_batch_norm else None,
-                    nn.ReLU()
-                )
+                if use_batch_norm:
+                  self.fc_layers[f"Layer {i}"] = nn.Sequential(
+                      nn.Linear(layers_dim[i], layers_dim[i+1]),
+                      nn.BatchNorm1d(layers_dim[i+1], momentum=0.01, eps=0.001),
+                      nn.ReLU()
+                  )
+                else:
+                  self.fc_layers[f"Layer {i}"] = nn.Sequential(
+                      nn.Linear(layers_dim[i], layers_dim[i+1]),
+                      nn.ReLU()
+                  )
             else: 
                 self.fc_layers[f"Layer {i}"] = ResNetBlock(
                     layers_dim[i], 
@@ -116,7 +120,23 @@ class MyFCLayers(torch.nn.Module):
         """
         return self.fc_layers.forward(x)
 
-
+class MyLibraryEncoder(nn.Module):
+    def __init__(
+        self,
+        n_input,
+        layers_dim,
+        use_batch_norm=True
+    ):
+        super().__init__()
+        self.encoder = MyFCLayers(
+                n_in=n_input,
+                layers_dim=layers_dim,
+                use_batch_norm=use_batch_norm
+            )
+        self.output=nn.Linear(self.encoder.n_out, 1)
+        self.activation = nn.ReLU()
+    def forward(self, x):
+        return self.activation(self.output(self.encoder(x)))
 
 class MyEncoder(nn.Module):
     """
@@ -144,6 +164,7 @@ class MyEncoder(nn.Module):
         n_input: int,
         n_output: int,
         layers_dim: List[int] = [128],
+        use_batch_norm=True,
         var_eps: float = 1e-4,
         var_activation: Optional[Callable] = None,
         ):
@@ -153,6 +174,7 @@ class MyEncoder(nn.Module):
             self.encoder = MyFCLayers(
                 n_in=n_input,
                 layers_dim=layers_dim,
+                use_batch_norm=use_batch_norm
             )
             self.mean_encoder = nn.Linear(self.encoder.n_out, n_output)
             self.var_encoder = nn.Linear(self.encoder.n_out, n_output)
@@ -210,6 +232,7 @@ class MyDecoder(nn.Module):
         n_input: int,
         n_output: int,
         layers_dim: List[int] = [128],
+        use_batch_norm:bool=True,
         eps: float = 1e-4,
         mean_activation: Optional[Callable] = None,
         shape_activation: Optional[Callable] = None,
@@ -220,6 +243,7 @@ class MyDecoder(nn.Module):
             self.decoder = MyFCLayers(
                 n_in=n_input,
                 layers_dim=layers_dim,
+                use_batch_norm=use_batch_norm
             )
             self.mean_decoder = nn.Linear(self.decoder.n_out, n_output)
             self.shape_decoder = nn.Linear(self.decoder.n_out, n_output)

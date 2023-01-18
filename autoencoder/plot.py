@@ -165,9 +165,9 @@ def plot_scatter(
                       coloraxis_colorbar_x = -0.10
                       )
 
-    config = dict({'scrollZoom': True})
+    #config = dict({'scrollZoom': True})
     # add dropdown menus to the figure
-    return fig.show(config=config)
+    return fig
 
 
 

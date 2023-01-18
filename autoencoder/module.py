@@ -2,7 +2,7 @@ from typing import List
 import torch
 from torch.optim import lr_scheduler
 import pytorch_lightning as pl
-from nn import MyFCLayers, MyEncoder, MyDecoder
+from nn import MyFCLayers, MyEncoder, MyDecoder, MyLibraryEncoder
 from distributions import (
     kullback_normal_divergence,
     log_nb_positive
@@ -41,9 +41,11 @@ class AutoencoderNB(pl.LightningModule):
         n_latent:int, 
         layers_dim:List[int], 
         library_layers_dim:List[int],
+        use_batch_norm:bool=True,
         learning_rate:float=1e-3,
         scheduler_milestones:List=[],
         scheduler_alpha:float=0.1
+
     ):
         """
         Documentation: 
@@ -53,11 +55,10 @@ class AutoencoderNB(pl.LightningModule):
         
         self.save_hyperparameters()
 
-        self.encoder = MyEncoder(n_input, n_latent, layers_dim)
+        self.encoder = MyEncoder(n_input, n_latent, layers_dim,use_batch_norm)
         layers_dim = reverse_and_flat(layers_dim)
-        self.decoder = MyDecoder(n_latent,n_input, layers_dim)
-        library_layers_dim.append(1)
-        self.l_encoder = MyFCLayers(n_input, library_layers_dim)
+        self.decoder = MyDecoder(n_latent,n_input, layers_dim,use_batch_norm)
+        self.l_encoder = MyLibraryEncoder(n_input, library_layers_dim, use_batch_norm)
 
     def forward(self, x_scaled, training=False):
         qz_m, qz_v, z = self.encoder(x_scaled)
