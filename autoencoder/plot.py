@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 
 def plot_CSV_collection(
     base_dir="./lightning_logs",
+    dirs=None,
     metrics=None,
     train=True,
     val=True
@@ -32,7 +33,8 @@ def plot_CSV_collection(
     train
         Choice if include train metrics in the plot
     """
-    dirs = os.listdir(base_dir)
+    
+    dirs = os.listdir(base_dir) if dirs is None else dirs
     palettes = [px.colors.qualitative.Set1, px.colors.qualitative.Pastel1]
     modes = list(l for l, c in  zip(["val", "train"], [val, train]) if c) 
     button_label = []
