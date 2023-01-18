@@ -40,10 +40,12 @@ def plot_CSV_collection(
 
     for i, dir in enumerate(dirs):
       # leggo il file csv
-      df = pd.read_csv(
-          base_dir+dir+"/metrics.csv",
-          index_col="epoch"
-      ).groupby(level=0).mean()
+      try:
+        df = pd.read_csv(
+            base_dir+dir+"/metrics.csv",
+            index_col="epoch"
+        ).groupby(level=0).mean()
+      except: continue
       for mode, palette in zip(modes, palettes):
         # filtro per modo 
         df_mode = df.filter(like=mode, axis=1)
@@ -55,7 +57,10 @@ def plot_CSV_collection(
           # seleziono la metrica
           sr_metric = df_mode.loc[:,df_mode.columns.str.contains(metric)].squeeze()
           # salto se la metrica non e presente
-          if sr_metric.shape[0] == 0: continue
+          try:
+            if sr_metric.shape[0] == 0: continue
+          except:
+            raise Exception(dir)
           fig.add_trace(go.Scatter(
                             x=sr_metric.index,
                             y=sr_metric.values,

@@ -75,7 +75,10 @@ class AutoencoderNB(pl.LightningModule):
             https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
             https://pytorch-lightning.readthedocs.io/en/stable/common/lightning_module.html?highlight=configure_optimizers()
         """
-        optimizer = torch.optim.Adam(self.parameters())
+        optimizer = torch.optim.Adam(
+          self.parameters(), 
+          lr=self.hparams.learning_rate
+        )
         scheduler= lr_scheduler.MultiStepLR(
             optimizer, 
             milestones=self.hparams.scheduler_milestones, 
